@@ -361,8 +361,8 @@ function showRecord(){   // 신기록 통과 표시 (원본 scoreNew GameObject)
 }
 function updateGauge(){ document.getElementById('gaugeFill').style.transform='scaleX('+clamp01(gauge)+')'; }
 let fxT=0;
-function flashGauge(){ fxT=0.18; const e=document.getElementById('gaugeFx');
-  e.style.transform='scaleX('+clamp01(gauge)+')'; e.style.opacity='0.9'; }
+function flashGauge(){ fxT=0.22; const e=document.getElementById('gaugeFx');
+  e.style.transform='scaleX('+clamp01(gauge)+')'; }   // 은은한 흰색 시머(주황 채움 위로 페이드)
 
 // ---------- 루프 ----------
 let last=performance.now();
@@ -377,7 +377,7 @@ function frame(now){
   } else if(state==='falling'){
     fallT+=dt; if(fallT>=FALL_TIME) gameOver();
   }
-  if(fxT>0){ fxT-=dt; if(fxT<=0) document.getElementById('gaugeFx').style.opacity='0'; }
+  if(fxT>0){ fxT-=dt; document.getElementById('gaugeFx').style.opacity=Math.max(0,fxT/0.22*0.45); }  // 0.45→0 부드럽게
   bgScrollDisp += (bgScroll-bgScrollDisp)*Math.min(1,dt*6);   // iTween 0.4s 근사
   // 효과 진행/만료
   for(let i=fx.length-1;i>=0;i--){ fx[i].t+=dt;
