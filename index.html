@@ -10,6 +10,8 @@
     font-family:-apple-system,BlinkMacSystemFont,"Apple SD Gothic Neo",sans-serif;
     touch-action:none;user-select:none;-webkit-user-select:none;-webkit-tap-highlight-color:transparent}
   #wrap{position:relative;width:100%;height:100%;margin:0 auto;overflow:hidden;background:#bfe0ef}
+  /* 폰: 화면 꽉 채움. 넓은 화면(태블릿/데스크톱)은 폰 모양 세로 컬럼으로 → 실제 모바일 게임처럼 */
+  @media (min-aspect-ratio:3/5){ #wrap{width:auto;height:100%;aspect-ratio:9/19} }
   canvas{position:absolute;inset:0;width:100%;height:100%;display:block;
     image-rendering:pixelated;image-rendering:crisp-edges}
   /* HUD */
@@ -180,7 +182,7 @@ function fit(){
   W=Math.round(r.width); H=Math.round(r.height);
   canvas.width=Math.round(W*DPR); canvas.height=Math.round(H*DPR);
   ctx.setTransform(DPR,0,0,DPR,0,0); ctx.imageSmoothingEnabled=false;
-  const bw=Math.max(30,Math.min(64,Math.round(W*0.155))); STEP_X=bw; STEP_Y=Math.round(bw*BLOCK_AR);
+  const bw=Math.max(34,Math.round(W*0.165)); STEP_X=bw; STEP_Y=Math.round(bw*BLOCK_AR);  // 상한 제거(컬럼 비율 일정)
 }
 addEventListener('resize',fit);
 
@@ -230,14 +232,18 @@ const AEXT = (function(){ const a=document.createElement('audio');
 function snd(name,vol){ const a=new Audio('assets/audio/'+name+'.'+AEXT); a.volume=vol||1; a._v=vol||1; return a; }
 const SFX={ coin:snd('sound_coin',0.6), bigcoin:snd('sound_bigcoin_ogg',0.7),
             drop:snd('sound_drop',0.7), button:snd('sound_button',0.5) };
-const BGM=new Audio('assets/audio/main_bgm.'+AEXT); BGM.loop=true; BGM.volume=0.32;
-let muted = localStorage.getItem('is_mute')==='1', bgmStarted=false;
+const BGM=new Audio('assets/audio/main_bgm.'+AEXT); BGM.loop=true; BGM.volume=0.4; BGM.preload='auto';
+try{ BGM.load(); }catch(e){}
+let muted = localStorage.getItem('is_mute')==='1';
 document.getElementById('muteBtn').textContent = muted?'🔇':'🔊';
 function playSfx(a){ if(muted)return; try{ const c=a.cloneNode(); c.volume=a._v; c.play().catch(()=>{}); }catch(e){} }
-function startBgm(){ if(muted||bgmStarted) return; bgmStarted=true; BGM.play().catch(()=>{bgmStarted=false;}); }
+function startBgm(){ if(muted) return; BGM.play().catch(()=>{}); }   // play()는 이미 재생중이면 무해
 function toggleMute(){ muted=!muted; localStorage.setItem('is_mute',muted?'1':'0');
   document.getElementById('muteBtn').textContent=muted?'🔇':'🔊';
-  if(muted){ BGM.pause(); } else if(state==='play'){ bgmStarted=false; startBgm(); } }
+  if(muted) BGM.pause(); else startBgm(); }
+// autoplay 해제: 어떤 탭/키든 첫 제스처에 BGM 시작 (이후엔 무해하게 유지)
+addEventListener('pointerdown', startBgm);
+addEventListener('keydown', startBgm);
 
 // ---------- 게임 상태 ----------
 let stairs, gen, player, gauge, guageSpeed, addSpeed, maxCount, nowStairsCount, isCheckAddSpeed;
@@ -510,7 +516,7 @@ window.__g={ act, reset, start(){reset();},
   get state(){return state}, get guageSpeed(){return guageSpeed},
   get char(){return selectedChar}, setChar(id){ selectedChar=id; },
   stepCorrect(){ act(stairs[player.idx].turn===1); },
-  setBg(n){ bgScroll=n; bgScrollDisp=n; } };
+  setBg(n){ bgScroll=n; bgScrollDisp=n; }, get bgmPaused(){return BGM.paused} };
 </script>
 </body>
 </html>
