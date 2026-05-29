@@ -1,0 +1,516 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no,viewport-fit=cover">
+<title>무한의 계단 — 클래식(무한) 디컴파일 복원</title>
+<style>
+  *{margin:0;padding:0;box-sizing:border-box}
+  html,body{width:100%;height:100%;overflow:hidden;background:#0b0d1a;
+    font-family:-apple-system,BlinkMacSystemFont,"Apple SD Gothic Neo",sans-serif;
+    touch-action:none;user-select:none;-webkit-user-select:none;-webkit-tap-highlight-color:transparent}
+  #wrap{position:relative;width:100%;height:100%;max-width:480px;margin:0 auto;overflow:hidden;background:#bfe0ef}
+  canvas{position:absolute;inset:0;width:100%;height:100%;display:block;
+    image-rendering:pixelated;image-rendering:crisp-edges}
+  /* HUD */
+  #hud{position:absolute;top:0;left:0;right:0;z-index:5;pointer-events:none;color:#fff;
+       padding-top:env(safe-area-inset-top)}
+  #score{font-size:54px;font-weight:900;letter-spacing:1px;text-align:center;line-height:1.05;margin-top:8px;
+    text-shadow:0 3px 0 rgba(0,0,0,.35),0 0 8px rgba(0,0,0,.25);-webkit-text-stroke:2px rgba(0,0,0,.35)}
+  #best{font-size:13px;font-weight:700;text-align:center;margin-top:2px;color:#fff;opacity:.92;
+    text-shadow:0 2px 3px rgba(0,0,0,.5)}
+  #coinHud{position:absolute;left:12px;top:calc(10px + env(safe-area-inset-top));z-index:7;display:flex;align-items:center;gap:5px;
+    background:rgba(0,0,0,.32);padding:5px 12px 5px 8px;border-radius:16px}
+  #coinHud img{width:20px;height:22px;image-rendering:pixelated}
+  #coinHud span{font-size:17px;font-weight:800;color:#ffe27a;text-shadow:0 2px 2px rgba(0,0,0,.6)}
+  #muteBtn{position:absolute;right:12px;top:calc(10px + env(safe-area-inset-top));z-index:7;width:38px;height:38px;border:none;
+    border-radius:12px;background:rgba(0,0,0,.32);color:#fff;font-size:18px;cursor:pointer;line-height:38px;text-align:center}
+  /* gauge: real ui_guageBG frame + ui_guageBar fill */
+  #gaugeWrap{position:absolute;left:50%;transform:translateX(-50%);top:96px;z-index:6;
+    width:264px;height:45px;background-size:100% 100%;background-repeat:no-repeat;image-rendering:pixelated}
+  #gaugeClip{position:absolute;left:9px;top:12px;width:246px;height:21px;overflow:hidden;border-radius:11px}
+  #gaugeFill,#gaugeFx{position:absolute;left:0;top:0;height:100%;width:100%;
+    transform-origin:left center;image-rendering:pixelated;background-size:auto 100%;background-repeat:repeat-x}
+  #gaugeFx{opacity:0}
+  /* on-screen controls — 원본: 하단 양 구석 둥근 나무 아이콘 버튼 (↻ 전환 / ▲ 오르기) */
+  #btns{position:absolute;bottom:0;left:0;right:0;display:flex;justify-content:space-between;align-items:flex-end;
+    height:150px;z-index:10;padding:0 22px 26px;padding-bottom:calc(26px + env(safe-area-inset-bottom));pointer-events:none}
+  #btns button{pointer-events:auto;width:90px;height:96px;border:none;background-color:transparent;outline:none;cursor:pointer;
+    background-repeat:no-repeat;background-position:center;background-size:contain;image-rendering:pixelated;
+    -webkit-tap-highlight-color:transparent;transition:transform .04s,filter .04s;
+    filter:drop-shadow(0 4px 2px rgba(0,0,0,.35))}
+  #btns button:active{transform:translateY(4px) scale(.96);filter:brightness(1.12) drop-shadow(0 2px 1px rgba(0,0,0,.3))}
+  #btnTurn{background-image:url('assets/ui/btn_turn.png')}   /* 원본 ui_button_turn */
+  #btnUp{background-image:url('assets/ui/btn_up.png')}       /* 원본 ui_button_up */
+  /* overlays */
+  .overlay{position:absolute;inset:0;z-index:20;display:flex;flex-direction:column;align-items:center;justify-content:center;
+    color:#fff;text-align:center;background:rgba(8,18,34,.72);backdrop-filter:blur(2px)}
+  .overlay.hidden{display:none}
+  .overlay h1{font-size:34px;font-weight:900;margin-bottom:8px;text-shadow:0 3px 0 rgba(0,0,0,.35)}
+  .overlay p{font-size:15px;opacity:.9;margin-bottom:20px;line-height:1.6}
+  .overlay .big{font-size:72px;font-weight:900;margin:2px 0;text-shadow:0 4px 0 rgba(0,0,0,.35)}
+  .overlay .sub{font-size:15px;opacity:.85;margin-bottom:6px}
+  .overlay .sub2{font-size:14px;opacity:.8;margin-bottom:22px;color:#ffe27a}
+  .overlay button{padding:15px 40px;border:none;border-radius:32px;font-size:19px;font-weight:800;color:#fff;cursor:pointer;
+    background:linear-gradient(180deg,#ffd23f,#ff9500);box-shadow:0 5px 0 #c46e00}
+  .overlay button:active{transform:translateY(3px);box-shadow:0 2px 0 #c46e00}
+  .overlay button.ghost{margin-top:12px;padding:10px 24px;font-size:15px;background:rgba(255,255,255,.14);
+    box-shadow:none;border:1px solid rgba(255,255,255,.35)}
+  .overlay button.ghost:active{transform:translateY(2px)}
+  .csLabel{font-size:13px;font-weight:700;opacity:.85;margin-bottom:8px;letter-spacing:1px}
+  #charSel{display:flex;gap:8px;margin-bottom:20px;flex-wrap:wrap;justify-content:center;max-width:330px}
+  #charSel .ch{width:60px;height:74px;border-radius:12px;background:rgba(255,255,255,.10);
+    border:2px solid rgba(255,255,255,.18);display:flex;flex-direction:column;align-items:center;justify-content:flex-end;
+    cursor:pointer;padding-bottom:4px;transition:transform .05s}
+  #charSel .ch:active{transform:scale(.95)}
+  #charSel .ch.sel{border-color:#ffd23f;background:rgba(255,210,63,.22);box-shadow:0 0 10px rgba(255,210,63,.5)}
+  #charSel .ch img{height:46px;image-rendering:pixelated;object-fit:contain;margin-top:auto}
+  #charSel .ch span{font-size:10px;font-weight:700;margin-top:2px;color:#fff;white-space:nowrap}
+</style>
+</head>
+<body>
+<div id="wrap">
+  <canvas id="c"></canvas>
+  <div id="hud">
+    <div id="score">0</div>
+    <div id="best">BEST 0</div>
+  </div>
+  <div id="coinHud"><img id="coinIcon" alt="coin"><span id="coinCnt">0</span></div>
+  <button id="muteBtn">🔊</button>
+  <div id="gaugeWrap"><div id="gaugeClip"><div id="gaugeFill"></div><div id="gaugeFx"></div></div></div>
+  <div id="btns">
+    <button id="btnTurn" aria-label="방향전환"></button>
+    <button id="btnUp" aria-label="오르기"></button>
+  </div>
+
+  <div id="start" class="overlay">
+    <h1>무한의 계단</h1>
+    <div class="csLabel">캐릭터 선택</div>
+    <div id="charSel"></div>
+    <p><b>올라가기</b>(↑ / 오른쪽 버튼) : 보는 방향으로 한 칸<br>
+       <b>방향바꾸기</b>(Space / 왼쪽 버튼) : 방향 틀고 한 칸<br>
+       다음 계단에 맞는 쪽으로! 게이지가 비면 끝.</p>
+    <button id="startBtn">시작</button>
+  </div>
+
+  <div id="over" class="overlay hidden">
+    <h1>게임 오버</h1>
+    <div class="big" id="finalScore">0</div>
+    <div class="sub" id="bestLine">BEST 0</div>
+    <div class="sub2" id="coinLine">🪙 0</div>
+    <button id="retryBtn">다시 하기</button>
+    <button id="charBtn" class="ghost">캐릭터 변경</button>
+  </div>
+</div>
+
+<script>
+'use strict';
+/* =====================================================================
+   무한의 계단 — 클래식(무한) 모드 stage 1 웹 복원
+   원본: com.nflystudio.InfiniteStaircase v1.3.289 (Unity 6000.2.7f2, IL2CPP, arm64)
+   libil2cpp.so + global-metadata.dat 디컴파일 기반. 모든 수치는 바이너리에서 직접
+   읽고 별도 에이전트가 적대적으로 재검증. 에셋은 원본 Unity 번들에서 추출.
+
+   [핵심 근거 / VA]
+   - 게이지 시작 0.5            : initGameManager @0x22a86b4
+   - 드레인 GuageSpeed*Δt        : _updateNormalMode @0x22aee78 → _subGaugeBar @0x22bfa44
+   - GuageSpeed 기본 0.12        : _initGuageSpeed @0x22a91f0
+   - 스텝당 충전 +0.13           : _updateGuage @0x22ab2a8 → _addGaugeBar(AddGuageSpeed) @0x22bfa00
+   - fillAmount clamp[0,1]       : set_fillAmount @0x1e0d490 (Mathf.Clamp01)
+   - 속도 램프(20스텝마다)        : _checkIncreaseSpeed @0x22aa2b4
+       마일스톤: 점수<100→0.05 / 100~319→0.04 / 320~500→0.01 / ≥501→0.01(maxCount 100), 상한 1.1
+   - 계단 [X,Y]=런렝스           : StageBlock blockTypeX_Y, START 21 / MAIN 179 가중,
+       AddStartRandomBlockType(2)/AddRandomBlcokType(4,sum>19컷), 런 끝마다 isTurn=1
+   - 입력/실패(즉사)             : CharacterUp @0x1c4bf38 / CharacterTurn @0x1c4a860 (블록 _turn 비트)
+   - 코인                        : _createCoin @0x1e502b4 (stair≥10, roll/1000, big/normal 임계),
+       getCoin @0x1e56488 (착지 계단의 코인 수집, +1/+5, sound_coin/sound_bigcoin)
+   - 추락 -30u/s ~1.8초          : _upDropAction @0x1c4c314 (sound_drop)
+   - bg speed                    : ScrollingMap (score<11→0.61 else 0.15)
+   ===================================================================== */
+
+// ---------- 디컴파일 상수 ----------
+const GAUGE_START=0.5, GUAGE_SPEED0=0.12, GUAGE_REFILL=0.13, GUAGE_MAX=1.0, MAX_ADD_SPEED=1.1;
+function rampParams(score){                       // _checkIncreaseSpeed 마일스톤
+  if(score>=501) return {addSpeed:0.01,maxCount:100};
+  if(score>=320) return {addSpeed:0.01,maxCount:20};
+  if(score>=100) return {addSpeed:0.04,maxCount:20};
+  return {addSpeed:0.05,maxCount:20};
+}
+const FALL_TIME=1.8, SCROLL_FAST=0.61, SCROLL_SLOW=0.15, SCROLL_FAST_UNTIL=11;
+const COIN_MIN_STAIR=10;                          // _createCoin: stair<10 코인 없음
+function coinRoll(stair){                          // _createCoin 확률 (roll/1000)
+  const roll=(Math.random()*1000)|0;
+  const tBig = stair<=199?15:(stair<=499?10:20);
+  const tNorm= stair<200?150:100;
+  if(roll<tBig)  return {count:5,type:'big'};
+  if(roll<tNorm) return {count:1,type:'normal'};
+  return null;
+}
+
+// ---------- 계단 방향 패턴 풀 (StageBlock, 바이너리 추출) ----------
+const START_POOL=[]; for(const X of [3,4,5]) for(let Y=3;Y<=9;Y++) START_POOL.push([X,Y]);
+const MAIN_POOL=[];
+(function(){ const push=(p,n)=>{for(let i=0;i<n;i++)MAIN_POOL.push(p);};
+  for(let X=1;X<=5;X++){ push([X,1],X===1?1:3); push([X,2],3); push([X,3],5); push([X,4],5);
+    push([X,5],5); push([X,6],3); push([X,7],1); push([X,8],1); push([X,9],1); }
+  push([6,1],3);push([6,2],3);push([6,3],3);push([6,4],3);push([6,5],3);
+  push([6,6],1);push([6,7],1);push([6,8],1);push([6,9],1);
+  for(let X=7;X<=9;X++) for(let Y=1;Y<=9;Y++) MAIN_POOL.push([X,Y]);
+})();
+const pickStart=()=>START_POOL[(Math.random()*(START_POOL.length-1))|0];   // Range maxExclusive
+const pickMain =()=>MAIN_POOL [(Math.random()*(MAIN_POOL.length-1))|0];
+function makeStairGen(){
+  const runs=[]; let openings=2;
+  function refill(){
+    if(openings>0){ const p=pickStart(); runs.push(p[0],p[1]); openings--; return; }
+    let sum=0; for(let i=0;i<4;i++){ const p=pickMain(); runs.push(p[0],p[1]); sum+=p[0]+p[1]; if(sum>19) break; }
+  }
+  let curRun=0,posInRun=0;
+  return function(){ while(curRun>=runs.length) refill();
+    const N=runs[curRun]; const isLast=(posInRun===N-1); posInRun++;
+    if(posInRun>=N){ curRun++; posInRun=0; } return isLast?1:0; };
+}
+
+// ---------- 렌더 설정 ----------
+const canvas=document.getElementById('c'), ctx=canvas.getContext('2d');
+let W=0,H=0,DPR=1,STEP_X=44,STEP_Y=24; const BLOCK_AR=12/22;
+function fit(){
+  DPR=Math.min(2,window.devicePixelRatio||1);
+  const r=document.getElementById('wrap').getBoundingClientRect();
+  W=Math.round(r.width); H=Math.round(r.height);
+  canvas.width=Math.round(W*DPR); canvas.height=Math.round(H*DPR);
+  ctx.setTransform(DPR,0,0,DPR,0,0); ctx.imageSmoothingEnabled=false;
+  const bw=Math.max(30,Math.min(64,Math.round(W*0.155))); STEP_X=bw; STEP_Y=Math.round(bw*BLOCK_AR);
+}
+addEventListener('resize',fit);
+
+// ---------- 에셋 로드 ----------
+const IMG={}; let toLoad=0,loaded=0,ready=false;
+function load(key,src){ toLoad++; const im=new Image();
+  im.onload=()=>{if(++loaded>=toLoad)ready=true;}; im.onerror=()=>{if(++loaded>=toLoad)ready=true;}; im.src=src; IMG[key]=im; }
+// ---------- 캐릭터 선택 (전부 원본 추출 프레임) ----------
+const CHARS=[{id:'salesman',label:'세일즈맨'},{id:'ninja',label:'닌자'},
+             {id:'knight',label:'기사'},{id:'santa',label:'산타'},{id:'zombie',label:'좀비'},
+             {id:'alice',label:'앨리스'},{id:'magicalgirl',label:'마법소녀'},{id:'ballerina',label:'발레리나'},
+             {id:'jungleprincess',label:'정글공주'},{id:'fairy',label:'요정'},
+             {id:'bikinicheerleader',label:'치어리더'},{id:'nurse',label:'간호사'}];
+const CHAR_FR=['1','2','3','4','5','6','idle_1','idle_2','idle_3','idle_4',
+               'drop_1','drop_2','drop_3','drop_4','drop_hp'];
+// 재추출한 균일 캐릭터 캔버스 파라미터(tk2d 지오메트리)
+const CHAR_CW=160, CHAR_CH=114, CHAR_OX=101, CHAR_OY=112, CHAR_D=100;
+CHARS.forEach(c=>CHAR_FR.forEach(n=>load('c_'+c.id+'_'+n,'assets/char/character_'+c.id+'_'+n+'.png')));
+let selectedChar = localStorage.getItem('is_char') || 'salesman';
+if(!CHARS.some(c=>c.id===selectedChar)) selectedChar='salesman';
+load('block','assets/stair/staircase_main.png');
+// 도시 배경 25프레임 (bgAtlas, ScrollingMap 무라)
+['a_1','a_2','a_3','a_4','a_5','a_6','a_7','a_8','b_1','b_2','b_3','b_4',
+ 'c_1','c_2','c_3','d_1','d_2','d_3','d_4','e_1','e_2','f_1','f_2','g_1','g_2']
+ .forEach(n=>load('bg_'+n,'assets/bg/bg_'+n+'.png'));
+for(let i=1;i<=6;i++) load('coin_'+i,'assets/fx/coin_turn_'+i+'.png');
+for(let i=1;i<=5;i++) load('cget_'+i,'assets/fx/coin_get_'+i+'.png');
+for(let i=1;i<=3;i++) load('puff_'+i,'assets/fx/effect_normal_move_'+i+'.png');
+for(let i=1;i<=3;i++) load('tpuff_'+i,'assets/fx/effect_normal_trun_'+i+'.png');
+for(let i=1;i<=3;i++) load('kick_'+i,'assets/fx/effect_kick'+i+'.png');   // 최고기록 통과 스타버스트
+document.getElementById('gaugeWrap').style.backgroundImage="url('assets/ui/gauge_bg.png')";
+document.getElementById('gaugeFill').style.backgroundImage="url('assets/ui/gauge_bar.png')";
+document.getElementById('gaugeFx').style.backgroundImage  ="url('assets/ui/gauge_effect.png')";
+document.getElementById('coinIcon').src='assets/ui/coin_icon.png';
+
+// tk2d 클립 정의
+const CLIPS={
+  idle:{f:['idle_1','idle_2','idle_3','idle_4'],fps:5,loop:true},
+  walk:{f:['1','2','3'],fps:10,loop:true},   // 단일 워크; 방향은 좌우 반전으로 처리
+  drop:{f:['drop_1','drop_2','drop_3','drop_3','drop_3','drop_3',
+           'drop_4','drop_4','drop_4','drop_4','drop_4'],fps:8,loop:false},
+};
+
+// ---------- 사운드 ----------
+const AEXT = (function(){ const a=document.createElement('audio');
+  return (a.canPlayType && a.canPlayType('audio/ogg;codecs=vorbis')) ? 'ogg':'wav'; })();
+function snd(name,vol){ const a=new Audio('assets/audio/'+name+'.'+AEXT); a.volume=vol||1; a._v=vol||1; return a; }
+const SFX={ coin:snd('sound_coin',0.6), bigcoin:snd('sound_bigcoin_ogg',0.7),
+            drop:snd('sound_drop',0.7), button:snd('sound_button',0.5) };
+const BGM=new Audio('assets/audio/main_bgm.'+AEXT); BGM.loop=true; BGM.volume=0.32;
+let muted = localStorage.getItem('is_mute')==='1', bgmStarted=false;
+document.getElementById('muteBtn').textContent = muted?'🔇':'🔊';
+function playSfx(a){ if(muted)return; try{ const c=a.cloneNode(); c.volume=a._v; c.play().catch(()=>{}); }catch(e){} }
+function startBgm(){ if(muted||bgmStarted) return; bgmStarted=true; BGM.play().catch(()=>{bgmStarted=false;}); }
+function toggleMute(){ muted=!muted; localStorage.setItem('is_mute',muted?'1':'0');
+  document.getElementById('muteBtn').textContent=muted?'🔇':'🔊';
+  if(muted){ BGM.pause(); } else if(state==='play'){ bgmStarted=false; startBgm(); } }
+
+// ---------- 게임 상태 ----------
+let stairs, gen, player, gauge, guageSpeed, addSpeed, maxCount, nowStairsCount, isCheckAddSpeed;
+let score, best, coins, bestCoins, state, clipName, clipT, fallT, camFreezeGy, bgScroll, fx, started, bestAtStart, kickFired;
+let coinAnimT=0;
+best=+(localStorage.getItem('is_best')||0);
+bestCoins=+(localStorage.getItem('is_coins')||0);
+document.getElementById('best').textContent='BEST '+best;
+document.getElementById('coinCnt').textContent=bestCoins;
+
+function clamp01(v){ return v<0?0:(v>1?1:v); }
+function setClip(n){ if(clipName!==n){ clipName=n; clipT=0; } }
+
+function ensureStairs(upto){
+  while(stairs.length<=upto){
+    const prev=stairs[stairs.length-1];
+    const dir = prev.turn ? -prev.dir : prev.dir;          // 직전이 turn이면 방향 반전
+    const i=stairs.length;
+    const s={ gx:prev.gx+dir, gy:prev.gy+1, turn:gen(), dir,
+              coin: i>=COIN_MIN_STAIR ? coinRoll(i) : null };
+    stairs.push(s);
+  }
+}
+
+function reset(){
+  gen=makeStairGen();
+  stairs=[{gx:0,gy:0,turn:gen(),dir:-1,coin:null}];      // 첫 런 LEFT
+  ensureStairs(60);
+  player={idx:0,facing:-1,dir:-1};
+  gauge=GAUGE_START; guageSpeed=GUAGE_SPEED0;
+  addSpeed=0.08; maxCount=20; nowStairsCount=0; isCheckAddSpeed=true;
+  score=0; coins=0; bgScroll=0; bgScrollDisp=0; fallT=0; fx=[]; started=false;  // 첫 스텝 전엔 드레인 X(원본 튜토리얼 게이팅)
+  bestAtStart=best; kickFired=false;
+  setClip('idle'); state='play';
+  document.getElementById('score').textContent='0';
+  document.getElementById('coinCnt').textContent=bestCoins;
+  document.getElementById('over').classList.add('hidden');
+  document.getElementById('start').classList.add('hidden');
+  updateGauge();
+}
+
+function checkIncreaseSpeed(scorePre){                     // _checkIncreaseSpeed 클래식 경로
+  if(!isCheckAddSpeed) return;
+  if(nowStairsCount>=maxCount){
+    if(guageSpeed<MAX_ADD_SPEED){ guageSpeed+=addSpeed; nowStairsCount=0; }
+    else { guageSpeed=MAX_ADD_SPEED; isCheckAddSpeed=false; }
+  }
+  const rp=rampParams(scorePre); addSpeed=rp.addSpeed; maxCount=rp.maxCount;
+  nowStairsCount++;
+}
+
+// ---------- 입력 ----------
+function act(isTurnPress){
+  if(state!=='play') return;
+  const cur=stairs[player.idx];
+  const needTurn = cur.turn===1;
+  if(isTurnPress!==needTurn){ die(); return; }              // 틀린 버튼 → 추락
+  started=true;                                              // 첫 스텝부터 타이머(드레인) 시작
+
+  checkIncreaseSpeed(score);
+  gauge=clamp01(gauge+GUAGE_REFILL);
+  score++; player.idx++;
+  ensureStairs(player.idx+60);
+
+  const landed=stairs[player.idx];
+  const moved=landed.gx-cur.gx; player.facing=moved<0?-1:1;
+  // 스텝 먼지 효과 (turn이면 turn puff)
+  spawnFx(isTurnPress?'tpuff':'puff', landed.gx, landed.gy);
+  setClip('walk'); clipT=0;
+
+  // 코인 수집 (착지 계단의 코인)
+  if(landed.coin && !landed.coin.got){
+    landed.coin.got=true; coins+=landed.coin.count;
+    playSfx(landed.coin.type==='big'?SFX.bigcoin:SFX.coin);
+    spawnFx('cget', landed.gx, landed.gy);
+    const total=bestCoins+coins; document.getElementById('coinCnt').textContent=total;
+  }
+  // 최고기록 통과 → 킥 스타버스트 1회 (PlayerMove._checkKickBest / StageMgr.kickBestObject)
+  if(!kickFired && bestAtStart>0 && score>bestAtStart){ kickFired=true; spawnFx('kick',landed.gx,landed.gy); showRecord(); }
+  bgScroll += (score<SCROLL_FAST_UNTIL?SCROLL_FAST:SCROLL_SLOW)/BG_PERIOD;  // ScrollingMap.speed/SpriteSize.y
+  document.getElementById('score').textContent=score;
+  updateGauge(); flashGauge();
+}
+function die(){
+  state='falling'; setClip('drop'); clipT=0; fallT=0;
+  camFreezeGy=stairs[player.idx].gy;
+  playSfx(SFX.drop);
+  if(navigator.vibrate) try{navigator.vibrate(40);}catch(e){}
+}
+function gameOver(){
+  state='over';
+  bestCoins+=coins; localStorage.setItem('is_coins',bestCoins);
+  document.getElementById('finalScore').textContent=score;
+  if(score>best){ best=score; localStorage.setItem('is_best',best); }
+  document.getElementById('best').textContent='BEST '+best;
+  document.getElementById('bestLine').textContent='BEST '+best;
+  document.getElementById('coinLine').textContent='🪙 +'+coins+'  (총 '+bestCoins+')';
+  document.getElementById('over').classList.remove('hidden');
+}
+
+// ---------- 효과(코인 줍기 팝 / 먼지) ----------
+function spawnFx(kind,gx,gy){
+  const def = kind==='cget' ? {n:5,fps:10,key:'cget_'} :        // coin_get 5f@10fps
+              kind==='kick' ? {n:3,fps:10,key:'kick_'} :        // effect_kick 3f@10fps (최고기록 통과)
+              kind==='tpuff'? {n:3,fps:14,key:'tpuff_'} : {n:3,fps:14,key:'puff_'};  // 스텝 먼지
+  fx.push({gx,gy,t:0,def});
+}
+function showRecord(){   // 신기록 통과 표시 (원본 scoreNew GameObject)
+  const e=document.createElement('div'); e.textContent='신기록!';
+  e.style.cssText='position:absolute;left:50%;top:30%;transform:translateX(-50%);z-index:9;color:#ffe27a;'+
+    'font-size:32px;font-weight:900;text-shadow:0 3px 0 rgba(0,0,0,.55);pointer-events:none;transition:all .9s ease-out;opacity:1';
+  document.getElementById('wrap').appendChild(e);
+  requestAnimationFrame(()=>{ e.style.top='17%'; e.style.opacity='0'; });
+  setTimeout(()=>e.remove(),950);
+}
+function updateGauge(){ document.getElementById('gaugeFill').style.transform='scaleX('+clamp01(gauge)+')'; }
+let fxT=0;
+function flashGauge(){ fxT=0.18; const e=document.getElementById('gaugeFx');
+  e.style.transform='scaleX('+clamp01(gauge)+')'; e.style.opacity='0.9'; }
+
+// ---------- 루프 ----------
+let last=performance.now();
+function frame(now){
+  let dt=(now-last)/1000; last=now; if(dt>0.05) dt=0.05;
+  coinAnimT+=dt;
+  if(state==='play'){
+    if(started){                              // 첫 스텝 이후에만 게이지 드레인
+      gauge-=guageSpeed*dt;
+      if(gauge<=0){ gauge=0; updateGauge(); die(); } else updateGauge();
+    }
+  } else if(state==='falling'){
+    fallT+=dt; if(fallT>=FALL_TIME) gameOver();
+  }
+  if(fxT>0){ fxT-=dt; if(fxT<=0) document.getElementById('gaugeFx').style.opacity='0'; }
+  bgScrollDisp += (bgScroll-bgScrollDisp)*Math.min(1,dt*6);   // iTween 0.4s 근사
+  // 효과 진행/만료
+  for(let i=fx.length-1;i>=0;i--){ fx[i].t+=dt;
+    if(fx[i].t*fx[i].def.fps>=fx[i].def.n) fx.splice(i,1); }
+  // 애니
+  const cl=CLIPS[clipName]; clipT+=dt; let fi=Math.floor(clipT*cl.fps);
+  if(!cl.loop&&fi>=cl.f.length) fi=cl.f.length-1; if(cl.loop) fi%=cl.f.length;
+  if(state==='play'&&clipName==='walk'&&clipT>cl.f.length/cl.fps) setClip('idle');
+  window.__curFrame=cl.f[fi];
+  render();
+  requestAnimationFrame(frame);
+}
+
+// ---------- 렌더 ----------
+/* 디컴파일: ScrollingMap MAP_CITY(0) — bgTypeList 37프레임 세로 무라(bg_a 지면→bg_g 하늘).
+   인트로(0..36) 1회 후 endBg=33 → [33..36]=bg_d_1..4 반복. 4장 적층·세로 스크롤·재활용.
+   스크롤 speed = (score<11? 0.61 : 0.15) world/스텝, 프레임 주기 SpriteSize.y=5.1 → frames/스텝. */
+const BG_SEQ=['bg_a_1','bg_a_2','bg_a_3','bg_a_4','bg_a_5','bg_a_6','bg_a_7','bg_a_8',
+  'bg_b_1','bg_b_2','bg_b_3','bg_b_4','bg_c_1','bg_c_2','bg_c_3','bg_d_1','bg_d_2','bg_d_3','bg_d_4',
+  'bg_e_1','bg_e_2','bg_d_1','bg_d_2','bg_d_3','bg_d_4','bg_f_1','bg_f_2','bg_d_1','bg_d_2','bg_d_3',
+  'bg_d_4','bg_g_1','bg_g_2','bg_d_1','bg_d_2','bg_d_3','bg_d_4'];      // 37, endBg=33
+const BG_PERIOD=5.1;                                  // SpriteSize.y (world)
+function bgFrame(i){ return i<37 ? BG_SEQ[i] : BG_SEQ[33+((i-37)&3)]; }
+let bgScrollDisp=0;
+function drawBackground(){
+  ctx.fillStyle='#a9d6ff'; ctx.fillRect(0,0,W,H);     // 안전 배경(프레임이 화면을 덮음)
+  const bw=W, bh=Math.ceil(W*102/160), s=bgScrollDisp, base=Math.floor(s);
+  for(let i=base+Math.ceil(H/bh)+1; i>=base-1; i--){
+    const im=IMG[bgFrame(i)]; if(!im||!im.width) continue;
+    ctx.drawImage(im, 0, Math.round(H-(i-s+1)*bh), bw, bh);  // 위로 오를수록 프레임이 내려옴
+  }
+}
+const ANCHOR=0.62;            // 플레이어 화면상 세로 위치(낮게 고정 → 시작 시 지면 가깝고, 올라도 안 올라감)
+const footCache={};           // 프레임별 최하단 불투명 픽셀 y (발 고정용)
+function frameFootY(key, im){
+  if(footCache[key]!=null) return footCache[key];
+  let r=CHAR_OY;
+  try{ const oc=document.createElement('canvas'); oc.width=im.width; oc.height=im.height;
+    const o=oc.getContext('2d'); o.drawImage(im,0,0);
+    const d=o.getImageData(0,0,im.width,im.height).data;
+    for(let y=im.height-1;y>=0;y--){ let op=false;
+      for(let x=0;x<im.width;x++){ if(d[(y*im.width+x)*4+3]>16){op=true;break;} }
+      if(op){ r=y; break; } } }catch(e){}
+  footCache[key]=r; return r;
+}
+function sx_(gx,camGx){ return Math.round(W*0.5+(gx-camGx)*STEP_X); }
+function sy_(gy,camGy){ return Math.round(H*ANCHOR-(gy-camGy)*STEP_Y); }
+
+function render(){
+  const p=stairs[player.idx]; const camGx=p.gx;
+  const camGy=p.gy;                          // 원본 CameraMove: player.y+고정오프셋 → 항상 같은 화면 위치(상승 X)
+  drawBackground();
+  if(!ready) return;
+  const bw=Math.round(STEP_X), blockH=Math.round(STEP_X*BLOCK_AR);    // step 크기 그대로(분리된 블록, 오버랩 X)
+  const lo=Math.max(0,player.idx-Math.ceil(H/STEP_Y)-4), hi=player.idx+Math.ceil(H/STEP_Y)+4;
+  // 계단 + 그 위 코인
+  const coinFi=(Math.floor(coinAnimT*12)%6)+1;
+  for(let i=Math.min(hi,stairs.length-1); i>=lo; i--){
+    const s=stairs[i]; const sx=sx_(s.gx,camGx), sy=sy_(s.gy,camGy);
+    if(sy<-blockH||sy>H+blockH) continue;
+    ctx.drawImage(IMG.block, sx-bw/2, sy-blockH/2, bw, blockH);
+    if(s.coin && !s.coin.got){
+      const ci=IMG['coin_'+coinFi];
+      if(ci&&ci.width){ const ch=Math.round(STEP_X*(s.coin.type==='big'?0.72:0.5)), cw=Math.round(ch*(ci.width/ci.height));
+        ctx.drawImage(ci, sx-cw/2, sy-blockH/2-ch-2, cw, ch); }
+    }
+  }
+  // 효과
+  for(const e of fx){ const fi=Math.floor(e.t*e.def.fps); const im=IMG[e.def.key+(fi+1)];
+    if(!im||!im.width) continue;
+    const sx=sx_(e.gx,camGx), sy=sy_(e.gy,camGy);
+    const scale = e.def.key==='cget' ? STEP_X*0.9/40 : e.def.key==='kick' ? STEP_X*1.6/74 : STEP_X*0.7/11;
+    const dw=Math.round(im.width*scale), dh=Math.round(im.height*scale);
+    const yy = e.def.key==='cget' ? sy-blockH : e.def.key==='kick' ? sy-blockH*0.5 : sy-blockH/2;
+    ctx.drawImage(im, Math.round(sx-dw/2), Math.round(yy-dh/2), dw, dh); }
+  // 플레이어 (선택 캐릭터) — 균일 160x114 캔버스, D=100px/unit
+  const f=window.__curFrame, im=f?IMG['c_'+selectedChar+'_'+f]:null;
+  if(im&&im.width){
+    const cur=stairs[player.idx]; const sx=sx_(cur.gx,camGx), sy=sy_(cur.gy,camGy);
+    let footY=sy-Math.round(STEP_X*BLOCK_AR)*0.5;            // 계단 윗면(발이 닿는 곳)
+    if(state==='falling') footY += Math.round(fallT*(H*0.85));
+    const S=(STEP_X*4.25)/CHAR_D;                            // 1 world unit = 4.25*STEP_X px
+    // 프레임마다 실제 발(최하단 불투명 픽셀)을 계단에 고정 → 걷기 공중프레임에서 뜨지 않음
+    const ay = (state==='falling') ? CHAR_OY : frameFootY(selectedChar+'_'+f, im);
+    ctx.save(); ctx.translate(Math.round(sx), Math.round(footY));
+    if(player.facing>0) ctx.scale(-1,1);                     // 이동 방향 좌우 반전(가로 기준점 고정)
+    ctx.drawImage(im, Math.round(-CHAR_OX*S), Math.round(-ay*S),
+                      Math.round(CHAR_CW*S), Math.round(CHAR_CH*S));
+    ctx.restore();
+  }
+}
+
+// ---------- 컨트롤 ----------
+function press(turn){ startBgm(); if(state==='play') act(turn); }
+document.getElementById('btnTurn').addEventListener('pointerdown',e=>{e.preventDefault();press(true);});
+document.getElementById('btnUp').addEventListener('pointerdown',e=>{e.preventDefault();press(false);});
+document.getElementById('startBtn').addEventListener('click',()=>{playSfx(SFX.button);reset();startBgm();});
+document.getElementById('retryBtn').addEventListener('click',()=>{playSfx(SFX.button);reset();startBgm();});
+document.getElementById('muteBtn').addEventListener('click',e=>{e.preventDefault();toggleMute();});
+addEventListener('keydown',e=>{
+  if(e.repeat) return;
+  if(e.key===' '||e.key==='ArrowLeft'||e.key==='a'){ e.preventDefault(); press(true); }   // Space/← = 방향바꾸기
+  else if(e.key==='ArrowUp'||e.key==='ArrowRight'||e.key==='w'||e.key==='d'){ e.preventDefault(); press(false); }  // ↑/→ = 올라가기
+  else if(e.key==='Enter'&&state!=='play'){ reset(); startBgm(); }
+});
+canvas.addEventListener('pointerdown',e=>{
+  if(state!=='play') return;
+  const rct=canvas.getBoundingClientRect(); press((e.clientX-rct.left)<rct.width/2);
+});
+
+// ---------- 캐릭터 선택 UI ----------
+const charSelEl=document.getElementById('charSel');
+(function buildCharSel(){
+  CHARS.forEach(c=>{
+    const el=document.createElement('div'); el.className='ch'+(c.id===selectedChar?' sel':'');
+    el.innerHTML='<img src="assets/char/character_'+c.id+'_thumb.png" alt=""><span>'+c.label+'</span>';
+    el.addEventListener('click',()=>{ selectedChar=c.id; localStorage.setItem('is_char',c.id);
+      [...charSelEl.children].forEach((n,i)=>n.classList.toggle('sel',CHARS[i].id===c.id));
+      setClip('idle'); try{playSfx(SFX.button);}catch(e){} });
+    charSelEl.appendChild(el);
+  });
+})();
+function showStart(){ reset(); state='ready';
+  document.getElementById('over').classList.add('hidden');
+  document.getElementById('start').classList.remove('hidden'); }
+document.getElementById('charBtn').addEventListener('click',()=>{ try{playSfx(SFX.button);}catch(e){} showStart(); });
+
+// ---------- 시작 ----------
+fit(); showStart();
+requestAnimationFrame(frame);
+
+// QA 훅
+window.__g={ act, reset, start(){reset();},
+  get stairs(){return stairs}, get player(){return player},
+  get score(){return score}, get coins(){return coins}, get gauge(){return gauge},
+  get state(){return state}, get guageSpeed(){return guageSpeed},
+  get char(){return selectedChar}, setChar(id){ selectedChar=id; },
+  stepCorrect(){ act(stairs[player.idx].turn===1); },
+  setBg(n){ bgScroll=n; bgScrollDisp=n; } };
+</script>
+</body>
+</html>
