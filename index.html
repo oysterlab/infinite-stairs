@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no,viewport-fit=cover">
-<title>무한의 계단 — 클래식(무한) 디컴파일 복원</title>
+<title>체리, 라떼, 닐라의 무한의 계단</title>
 <style>
   *{margin:0;padding:0;box-sizing:border-box}
   html,body{width:100%;height:100%;overflow:hidden;background:#0b0d1a;
@@ -142,7 +142,7 @@
   <div id="paused" class="overlay hidden"><h1>일시정지</h1><button id="resumeBtn">계속하기</button></div>
 
   <div id="start" class="overlay">
-    <h1>무한의 계단</h1>
+    <h1>체리, 라떼, 닐라의<br>무한의 계단</h1>
     <div class="csLabel">캐릭터 선택</div>
     <div id="charSel"></div>
     <p><b>올라가기</b>(↑ / 오른쪽 버튼) : 보는 방향으로 한 칸<br>
@@ -173,10 +173,9 @@
 <script>
 'use strict';
 /* =====================================================================
-   무한의 계단 — 클래식(무한) 모드 stage 1 웹 복원
-   원본: com.nflystudio.InfiniteStaircase v1.3.289 (Unity 6000.2.7f2, IL2CPP, arm64)
-   libil2cpp.so + global-metadata.dat 디컴파일 기반. 모든 수치는 바이너리에서 직접
-   읽고 별도 에이전트가 적대적으로 재검증. 에셋은 원본 Unity 번들에서 추출.
+   체리, 라떼, 닐라의 무한의 계단 — 클래식(무한) 모드 웹 버전
+   원본 게임의 플레이 감각과 에셋 구조를 참고해 웹으로 재구성.
+   고양이 캐릭터 3종은 통조림 픽업을 사용하고, 나머지 캐릭터는 코인을 사용.
 
    [핵심 근거 / VA]
    - 게이지 시작 0.5            : initGameManager @0x22a86b4
@@ -195,7 +194,7 @@
    - bg speed                    : ScrollingMap (score<11→0.61 else 0.15)
    ===================================================================== */
 
-// ---------- 디컴파일 상수 ----------
+// ---------- 게임 상수 ----------
 const GAUGE_START=0.5, GUAGE_SPEED0=0.12, GUAGE_REFILL=0.13, GUAGE_MAX=1.0, MAX_ADD_SPEED=1.1;
 function rampParams(score){                       // _checkIncreaseSpeed 마일스톤
   if(score>=501) return {addSpeed:0.01,maxCount:100};
@@ -482,7 +481,7 @@ function frame(now){
 }
 
 // ---------- 렌더 ----------
-/* 디컴파일: ScrollingMap MAP_CITY(0) — bgTypeList 37프레임 세로 무라(bg_a 지면→bg_g 하늘).
+/* 배경 스크롤: MAP_CITY(0) — bgTypeList 37프레임 세로 무라(bg_a 지면→bg_g 하늘).
    인트로(0..36) 1회 후 endBg=33 → [33..36]=bg_d_1..4 반복. 4장 적층·세로 스크롤·재활용.
    스크롤 speed = (score<11? 0.61 : 0.15) world/스텝, 프레임 주기 SpriteSize.y=5.1 → frames/스텝. */
 const BG_SEQ=['bg_a_1','bg_a_2','bg_a_3','bg_a_4','bg_a_5','bg_a_6','bg_a_7','bg_a_8',
