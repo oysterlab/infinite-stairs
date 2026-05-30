@@ -280,6 +280,14 @@ const CAN_PICKUP_CHARS=new Set(['cat','latte','nila']);
 function useCanPickup(){ return CAN_PICKUP_CHARS.has(selectedChar); }
 const SOFT_CHAR_SCALE={cat:0.8,latte:0.8,nila:0.8};
 function charRenderScale(){ return SOFT_CHAR_SCALE[selectedChar] || 1; }
+function pickupAssetPrefix(coin){
+  if(!useCanPickup()) return 'coin_';
+  return coin && coin.type==='big' ? 'churu_' : 'can_';
+}
+function pickupGetFx(coin){
+  if(!useCanPickup()) return 'cget';
+  return coin && coin.type==='big' ? 'churuget' : 'canget';
+}
 function updatePickupHudIcon(){
   const src=useCanPickup()?'assets/ui/can_icon.png':'assets/ui/coin_icon.png';
   document.getElementById('coinIcon').src=src;
@@ -295,6 +303,8 @@ for(let i=1;i<=6;i++) load('coin_'+i,'assets/fx/coin_turn_'+i+'.png');
 for(let i=1;i<=5;i++) load('cget_'+i,'assets/fx/coin_get_'+i+'.png');
 for(let i=1;i<=6;i++) load('can_'+i,'assets/fx/can_turn_'+i+'.png');
 for(let i=1;i<=5;i++) load('canget_'+i,'assets/fx/can_get_'+i+'.png');
+for(let i=1;i<=6;i++) load('churu_'+i,'assets/fx/churu_turn_'+i+'.png');
+for(let i=1;i<=5;i++) load('churuget_'+i,'assets/fx/churu_get_'+i+'.png');
 for(let i=1;i<=3;i++) load('puff_'+i,'assets/fx/effect_normal_move_'+i+'.png');
 for(let i=1;i<=3;i++) load('tpuff_'+i,'assets/fx/effect_normal_trun_'+i+'.png');
 for(let i=1;i<=3;i++) load('kick_'+i,'assets/fx/effect_kick'+i+'.png');   // 최고기록 통과 스타버스트
@@ -404,7 +414,7 @@ function act(isTurnPress){
   if(landed.coin && !landed.coin.got){
     landed.coin.got=true; coins+=landed.coin.count;
     playSfx(landed.coin.type==='big'?SFX.bigcoin:SFX.coin);
-    spawnFx(useCanPickup()?'canget':'cget', landed.gx, landed.gy);
+    spawnFx(pickupGetFx(landed.coin), landed.gx, landed.gy);
     const total=bestCoins+coins; document.getElementById('coinCnt').textContent=total;
   }
   // 최고기록 통과 → 킥 스타버스트 1회 (PlayerMove._checkKickBest / StageMgr.kickBestObject)
@@ -441,6 +451,7 @@ function gameOver(){
 function spawnFx(kind,gx,gy){
   const def = kind==='cget' ? {n:5,fps:10,key:'cget_'} :        // coin_get 5f@10fps
               kind==='canget' ? {n:5,fps:10,key:'canget_'} :   // can_get 5f@10fps
+              kind==='churuget' ? {n:5,fps:10,key:'churuget_'} : // churu_get 5f@10fps
               kind==='kick' ? {n:3,fps:10,key:'kick_'} :        // effect_kick 3f@10fps (최고기록 통과)
               kind==='tpuff'? {n:3,fps:14,key:'tpuff_'} : {n:3,fps:14,key:'puff_'};  // 스텝 먼지
   fx.push({gx,gy,t:0,def});
@@ -528,14 +539,14 @@ function render(){
   if(!ready) return;
   const bw=Math.round(STEP_X), blockH=Math.round(STEP_X*BLOCK_AR);    // step 크기 그대로(분리된 블록, 오버랩 X)
   const lo=Math.max(0,player.idx-Math.ceil(H/STEP_Y)-4), hi=player.idx+Math.ceil(H/STEP_Y)+4;
-  // 계단 + 그 위 픽업(고양이 캐릭터는 통조림, 나머지는 코인)
-  const coinFi=(Math.floor(coinAnimT*12)%6)+1, pickupKey=useCanPickup()?'can_':'coin_';
+  // 계단 + 그 위 픽업(고양이 캐릭터는 일반=통조림, big=츄르)
+  const coinFi=(Math.floor(coinAnimT*12)%6)+1;
   for(let i=Math.min(hi,stairs.length-1); i>=lo; i--){
     const s=stairs[i]; const sx=sx_(s.gx,camGx), sy=sy_(s.gy,camGy);
     if(sy<-blockH||sy>H+blockH) continue;
     ctx.drawImage(IMG.block, sx-bw/2, sy-blockH/2, bw, blockH);
     if(s.coin && !s.coin.got){
-      const ci=IMG[pickupKey+coinFi];
+      const ci=IMG[pickupAssetPrefix(s.coin)+coinFi];
       if(ci&&ci.width){ const ch=Math.round(STEP_X*(s.coin.type==='big'?0.72:0.5)), cw=Math.round(ch*(ci.width/ci.height));
         ctx.drawImage(ci, sx-cw/2, sy-blockH/2-ch-2, cw, ch); }
     }
@@ -544,7 +555,7 @@ function render(){
   for(const e of fx){ const fi=Math.floor(e.t*e.def.fps); const im=IMG[e.def.key+(fi+1)];
     if(!im||!im.width) continue;
     const sx=sx_(e.gx,camGx), sy=sy_(e.gy,camGy);
-    const isGetFx=e.def.key==='cget_'||e.def.key==='canget_', isKickFx=e.def.key==='kick_';
+    const isGetFx=e.def.key==='cget_'||e.def.key==='canget_'||e.def.key==='churuget_', isKickFx=e.def.key==='kick_';
     const scale = isGetFx ? STEP_X*0.9/40 : isKickFx ? STEP_X*1.6/74 : STEP_X*0.7/11;
     const dw=Math.round(im.width*scale), dh=Math.round(im.height*scale);
     const yy = isGetFx ? sy-blockH : isKickFx ? sy-blockH*0.5 : sy-blockH/2;
