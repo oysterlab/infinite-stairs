@@ -207,7 +207,7 @@ const IMG={}; let toLoad=0,loaded=0,ready=false;
 function load(key,src){ toLoad++; const im=new Image();
   im.onload=()=>{if(++loaded>=toLoad)ready=true;}; im.onerror=()=>{if(++loaded>=toLoad)ready=true;}; im.src=src; IMG[key]=im; }
 // ---------- 캐릭터 선택 (전부 원본 추출 프레임) ----------
-const CHARS=[{id:'salesman',label:'세일즈맨'},{id:'ninja',label:'닌자'},
+const CHARS=[{id:'cat',label:'체리'},{id:'latte',label:'라떼'},{id:'nila',label:'닐라'},{id:'salesman',label:'세일즈맨'},{id:'ninja',label:'닌자'},
              {id:'knight',label:'기사'},{id:'santa',label:'산타'},{id:'zombie',label:'좀비'},
              {id:'alice',label:'앨리스'},{id:'magicalgirl',label:'마법소녀'},{id:'ballerina',label:'발레리나'},
              {id:'jungleprincess',label:'정글공주'},{id:'fairy',label:'요정'},
@@ -217,8 +217,13 @@ const CHAR_FR=['1','2','3','4','5','6','idle_1','idle_2','idle_3','idle_4',
 // 재추출한 균일 캐릭터 캔버스 파라미터(tk2d 지오메트리)
 const CHAR_CW=160, CHAR_CH=114, CHAR_OX=101, CHAR_OY=112, CHAR_D=100;
 CHARS.forEach(c=>CHAR_FR.forEach(n=>load('c_'+c.id+'_'+n,'assets/char/character_'+c.id+'_'+n+'.png')));
-let selectedChar = localStorage.getItem('is_char') || 'salesman';
-if(!CHARS.some(c=>c.id===selectedChar)) selectedChar='salesman';
+const DEFAULT_CHAR='cat', DEFAULT_CHAR_VERSION='cat_v3_default';
+if(localStorage.getItem('is_char_default_version')!==DEFAULT_CHAR_VERSION){
+  localStorage.setItem('is_char',DEFAULT_CHAR);
+  localStorage.setItem('is_char_default_version',DEFAULT_CHAR_VERSION);
+}
+let selectedChar = localStorage.getItem('is_char') || DEFAULT_CHAR;
+if(!CHARS.some(c=>c.id===selectedChar)) selectedChar=DEFAULT_CHAR;
 load('block','assets/stair/staircase_main.png');
 // 도시 배경 25프레임 (bgAtlas, ScrollingMap 무라)
 ['a_1','a_2','a_3','a_4','a_5','a_6','a_7','a_8','b_1','b_2','b_3','b_4',
