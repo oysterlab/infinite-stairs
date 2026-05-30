@@ -71,6 +71,33 @@
   .overlay button.ghost{margin-top:12px;padding:10px 24px;font-size:15px;background:rgba(255,255,255,.14);
     box-shadow:none;border:1px solid rgba(255,255,255,.35)}
   .overlay button.ghost:active{transform:translateY(2px)}
+  /* ===== 게임오버 결과 팝업 (원본 UIFailPopup: 중앙 팝업 + 스케일인, 점수/최고/코인 + 부활·다시하기·홈) ===== */
+  #overPanel{position:relative;width:300px;max-width:84%;padding:30px 22px 20px;border-radius:20px;
+    background:linear-gradient(180deg,#fff7e6,#ffe6bd);border:4px solid #8a5a2b;
+    box-shadow:0 10px 0 rgba(0,0,0,.28),inset 0 0 0 3px #ffd99a;color:#5a3a1c;text-align:center;transform:scale(.7);opacity:0}
+  #over:not(.hidden) #overPanel{animation:ovpop .42s cubic-bezier(.2,1.45,.4,1) forwards}
+  @keyframes ovpop{0%{transform:scale(.7);opacity:0}60%{transform:scale(1.05);opacity:1}100%{transform:scale(1);opacity:1}}
+  #newRecord{position:absolute;top:-16px;left:50%;transform:translateX(-50%) rotate(-7deg);
+    background:linear-gradient(180deg,#ff5b5b,#d62b2b);color:#fff;font-size:16px;font-weight:900;letter-spacing:1px;
+    padding:5px 16px;border-radius:20px;border:3px solid #fff;box-shadow:0 3px 0 rgba(0,0,0,.3);z-index:3;white-space:nowrap}
+  #newRecord.hidden{display:none}
+  .ovScoreLabel{font-size:14px;font-weight:800;letter-spacing:3px;color:#b9842f}
+  #finalScore{font-size:62px;line-height:1.05;font-weight:900;color:#ff7a18;text-shadow:0 3px 0 #b34d00;margin:0 0 12px}
+  #overStats{margin:0 4px 16px}
+  .ovRow{display:flex;justify-content:space-between;align-items:center;font-size:16px;font-weight:800;
+    padding:8px 12px;border-radius:10px;background:rgba(138,90,43,.10);margin-top:6px}
+  .ovRow .ovKey{display:flex;align-items:center;gap:5px;color:#7a5630}
+  .ovRow .ovVal{color:#3a2410}
+  .coinMini{width:18px;height:18px;image-rendering:pixelated;vertical-align:middle}
+  #overBtns{display:flex;gap:10px;justify-content:center}
+  .ovBtn{flex:1;display:flex;flex-direction:column;align-items:center;gap:3px;padding:12px 4px 9px;border:none;
+    border-radius:14px;font-size:13px;font-weight:800;color:#fff;cursor:pointer;box-shadow:0 4px 0 rgba(0,0,0,.28);transition:transform .05s}
+  .ovBtn:active{transform:translateY(3px);box-shadow:0 1px 0 rgba(0,0,0,.28)}
+  .ovBtn img{width:34px;height:34px;image-rendering:pixelated;object-fit:contain}
+  .ovBtn.hidden{display:none}
+  .ovRevive{background:linear-gradient(180deg,#5ad07a,#2fa54f)}
+  .ovRetry{background:linear-gradient(180deg,#ffd23f,#ff9500)}
+  .ovHome{background:linear-gradient(180deg,#9fb4c4,#6d8499)}
   .csLabel{font-size:13px;font-weight:700;opacity:.85;margin-bottom:8px;letter-spacing:1px}
   #charSel{display:flex;gap:8px;margin-bottom:20px;flex-wrap:wrap;justify-content:center;max-width:330px}
   #charSel .ch{width:60px;height:74px;border-radius:12px;background:rgba(255,255,255,.10);
@@ -112,12 +139,20 @@
   </div>
 
   <div id="over" class="overlay hidden">
-    <h1>게임 오버</h1>
-    <div class="big" id="finalScore">0</div>
-    <div class="sub" id="bestLine">BEST 0</div>
-    <div class="sub2" id="coinLine">🪙 0</div>
-    <button id="retryBtn">다시 하기</button>
-    <button id="charBtn" class="ghost">캐릭터 변경</button>
+    <div id="overPanel">
+      <div id="newRecord" class="hidden">신기록!</div>
+      <div class="ovScoreLabel">SCORE</div>
+      <div id="finalScore">0</div>
+      <div id="overStats">
+        <div class="ovRow"><span class="ovKey">BEST</span><span class="ovVal" id="bestLine">0</span></div>
+        <div class="ovRow"><span class="ovKey"><img class="coinMini" src="assets/ui/coin_icon.png" alt="">COIN</span><span class="ovVal" id="coinLine">0</span></div>
+      </div>
+      <div id="overBtns">
+        <button id="reviveBtn" class="ovBtn ovRevive"><img src="assets/ui/btn_revive.png" alt="" onerror="this.remove()"><span>부활</span></button>
+        <button id="retryBtn" class="ovBtn ovRetry"><img src="assets/ui/btn_retry.png" alt="" onerror="this.remove()"><span>다시하기</span></button>
+        <button id="charBtn" class="ovBtn ovHome"><img src="assets/ui/btn_home.png" alt="" onerror="this.remove()"><span>홈</span></button>
+      </div>
+    </div>
   </div>
 </div>
 
@@ -269,7 +304,7 @@ addEventListener('keydown', startBgm);
 // ---------- 게임 상태 ----------
 let stairs, gen, player, gauge, guageSpeed, addSpeed, maxCount, nowStairsCount, isCheckAddSpeed;
 let score, best, coins, bestCoins, state, clipName, clipT, fallT, camFreezeGy, bgScroll, fx, started, bestAtStart, kickFired;
-let coinAnimT=0, paused=false;
+let coinAnimT=0, paused=false, revivedThisRun=false;
 best=+(localStorage.getItem('is_best')||0);
 bestCoins=+(localStorage.getItem('is_coins')||0);
 document.getElementById('best').textContent='BEST '+best;
@@ -297,7 +332,7 @@ function reset(){
   gauge=GAUGE_START; guageSpeed=GUAGE_SPEED0;
   addSpeed=0.08; maxCount=20; nowStairsCount=0; isCheckAddSpeed=true;
   score=0; coins=0; bgScroll=0; bgScrollDisp=0; fallT=0; fx=[]; started=false;  // 첫 스텝 전엔 드레인 X(원본 튜토리얼 게이팅)
-  bestAtStart=best; kickFired=false;
+  bestAtStart=best; kickFired=false; revivedThisRun=false;
   setClip('idle'); state='play';
   document.getElementById('score').textContent='0';
   document.getElementById('coinCnt').textContent=bestCoins;
@@ -357,12 +392,15 @@ function die(){
 }
 function gameOver(){
   state='over'; hideHand(); _pauseBtnEl.style.display='none'; setPaused(false);
+  const isNew = score>best;                                   // best 갱신 전에 신기록 판정
   bestCoins+=coins; localStorage.setItem('is_coins',bestCoins);
   document.getElementById('finalScore').textContent=score;
-  if(score>best){ best=score; localStorage.setItem('is_best',best); }
+  if(isNew){ best=score; localStorage.setItem('is_best',best); }
   document.getElementById('best').textContent='BEST '+best;
-  document.getElementById('bestLine').textContent='BEST '+best;
-  document.getElementById('coinLine').textContent='🪙 +'+coins+'  (총 '+bestCoins+')';
+  document.getElementById('bestLine').textContent=best;
+  document.getElementById('coinLine').textContent='+'+coins;
+  document.getElementById('newRecord').classList.toggle('hidden', !isNew);   // 신기록 스탬프
+  document.getElementById('reviveBtn').classList.toggle('hidden', revivedThisRun);  // 부활: 런당 1회
   document.getElementById('over').classList.remove('hidden');
 }
 
@@ -520,6 +558,15 @@ document.getElementById('retryBtn').addEventListener('click',()=>{playSfx(SFX.bu
 document.getElementById('muteBtn').addEventListener('click',e=>{e.preventDefault();toggleMute();});
 document.getElementById('pauseBtn').addEventListener('click',e=>{e.preventDefault();togglePause();});
 document.getElementById('resumeBtn').addEventListener('click',e=>{e.preventDefault();playSfx(SFX.button);setPaused(false);});
+document.getElementById('reviveBtn').addEventListener('click',()=>{       // 부활: 게이지 복구 후 그 자리에서 계속(런당 1회)
+  if(revivedThisRun) return;
+  revivedThisRun=true; playSfx(SFX.button);
+  gauge=GAUGE_START; updateGauge();
+  setClip('idle'); clipT=0; fallT=0;
+  document.getElementById('over').classList.add('hidden');
+  _pauseBtnEl.style.display='block';
+  state='play'; started=true; startBgm();
+});
 addEventListener('keydown',e=>{
   if(e.repeat) return;
   if(e.key==='Escape'||e.key==='p'){ e.preventDefault(); togglePause(); return; }
