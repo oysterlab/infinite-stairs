@@ -122,7 +122,6 @@
   #charSel .ch:active{transform:scale(.95)}
   #charSel .ch.sel{border-color:#ffd23f;background:rgba(255,210,63,.22);box-shadow:0 0 10px rgba(255,210,63,.5)}
   #charSel .ch img{height:58px;image-rendering:pixelated;object-fit:contain;margin-top:auto}
-  #charSel .ch[data-soft="1"] img{image-rendering:auto}
   #charSel .ch span{font-size:11px;font-weight:800;margin-top:3px;color:#fff;white-space:nowrap}
   #startBtn{min-width:160px}
 </style>
@@ -279,7 +278,7 @@ let selectedChar = localStorage.getItem('is_char') || DEFAULT_CHAR;
 if(!CHARS.some(c=>c.id===selectedChar)) selectedChar=DEFAULT_CHAR;
 const CAN_PICKUP_CHARS=new Set(['cat','latte','nila']);
 function useCanPickup(){ return CAN_PICKUP_CHARS.has(selectedChar); }
-const SOFT_CHAR_SCALE={cat:0.88,latte:0.88,nila:0.88};
+const SOFT_CHAR_SCALE={cat:0.8,latte:0.8,nila:0.8};
 function charRenderScale(){ return SOFT_CHAR_SCALE[selectedChar] || 1; }
 function updatePickupHudIcon(){
   const src=useCanPickup()?'assets/ui/can_icon.png':'assets/ui/coin_icon.png';
@@ -432,7 +431,6 @@ function gameOver(){
   // 플레이한 캐릭터 아이콘 (원본 결과 팝업의 캐릭터 썸네일)
   const ovChar=document.getElementById('overChar');
   ovChar.style.visibility=''; ovChar.src='assets/char/character_'+selectedChar+'_thumb.png';
-  ovChar.style.imageRendering = charRenderScale() < 1 ? 'auto' : 'pixelated';
   // 메달 스프라이트(bronze/silver/gold/diamond/rainbow)는 NGUI 아틀라스에서 잘못 크롭된 노이즈라 제거.
   document.getElementById('newRecord').classList.toggle('hidden', !isNew);   // 신기록 스탬프
   document.getElementById('reviveBtn').classList.toggle('hidden', revivedThisRun);  // 부활: 런당 1회
@@ -557,12 +555,10 @@ function render(){
     const cur=stairs[player.idx]; const sx=sx_(cur.gx,camGx), sy=sy_(cur.gy,camGy);
     let footY=sy-Math.round(STEP_X*BLOCK_AR)*0.5;            // 계단 윗면(발이 닿는 곳)
     if(state==='falling') footY += Math.round(fallT*(H*0.85));
-    const S=(STEP_X*4.25*charRenderScale())/CHAR_D;          // 고양이 3종은 살짝 줄여 확대 노이즈 완화
+    const S=(STEP_X*4.25*charRenderScale())/CHAR_D;          // 고양이 3종은 작게 그려 선명도 유지
     // 프레임마다 실제 발(최하단 불투명 픽셀)을 계단에 고정 → 걷기 공중프레임에서 뜨지 않음
     const ay = (state==='falling') ? CHAR_OY : frameFootY(selectedChar+'_'+f, im);
     ctx.save(); ctx.translate(Math.round(sx), Math.round(footY));
-    ctx.imageSmoothingEnabled = charRenderScale() < 1;
-    if(ctx.imageSmoothingEnabled) ctx.imageSmoothingQuality = 'high';
     if(player.facing>0) ctx.scale(-1,1);                     // 이동 방향 좌우 반전(가로 기준점 고정)
     ctx.drawImage(im, Math.round(-CHAR_OX*S), Math.round(-ay*S),
                       Math.round(CHAR_CW*S), Math.round(CHAR_CH*S));
@@ -624,7 +620,6 @@ const charSelEl=document.getElementById('charSel');
 (function buildCharSel(){
   CHARS.forEach(c=>{
     const el=document.createElement('div'); el.className='ch'+(c.id===selectedChar?' sel':'');
-    if(SOFT_CHAR_SCALE[c.id]) el.dataset.soft='1';
     el.innerHTML='<img src="assets/char/character_'+c.id+'_thumb.png" alt=""><span>'+c.label+'</span>';
     el.addEventListener('click',()=>{ selectedChar=c.id; localStorage.setItem('is_char',c.id);
       updatePickupHudIcon();
