@@ -77,12 +77,24 @@
     box-shadow:0 10px 0 rgba(0,0,0,.28),inset 0 0 0 3px #ffd99a;color:#5a3a1c;text-align:center;transform:scale(.7);opacity:0}
   #over:not(.hidden) #overPanel{animation:ovpop .42s cubic-bezier(.2,1.45,.4,1) forwards}
   @keyframes ovpop{0%{transform:scale(.7);opacity:0}60%{transform:scale(1.05);opacity:1}100%{transform:scale(1);opacity:1}}
-  #newRecord{position:absolute;top:-16px;left:50%;transform:translateX(-50%) rotate(-7deg);
-    background:linear-gradient(180deg,#ff5b5b,#d62b2b);color:#fff;font-size:16px;font-weight:900;letter-spacing:1px;
-    padding:5px 16px;border-radius:20px;border:3px solid #fff;box-shadow:0 3px 0 rgba(0,0,0,.3);z-index:3;white-space:nowrap}
+  /* 신기록 스탬프: 원본 new_record 스프라이트(25x10)를 픽셀 확대해 상단에 비스듬히 */
+  #newRecord{position:absolute;top:-22px;left:50%;width:116px;height:auto;
+    transform:translateX(-50%) rotate(-8deg);image-rendering:pixelated;
+    filter:drop-shadow(0 3px 2px rgba(0,0,0,.4));z-index:3;
+    animation:nrPop .45s cubic-bezier(.2,1.6,.4,1) .15s backwards}
   #newRecord.hidden{display:none}
-  .ovScoreLabel{font-size:14px;font-weight:800;letter-spacing:3px;color:#b9842f}
-  #finalScore{font-size:62px;line-height:1.05;font-weight:900;color:#ff7a18;text-shadow:0 3px 0 #b34d00;margin:0 0 12px}
+  @keyframes nrPop{0%{transform:translateX(-50%) rotate(-8deg) scale(.2);opacity:0}100%{transform:translateX(-50%) rotate(-8deg) scale(1);opacity:1}}
+  /* 플레이한 캐릭터 아이콘 */
+  #overChar{display:block;margin:0 auto 6px;width:64px;height:64px;object-fit:contain;image-rendering:pixelated;
+    filter:drop-shadow(0 2px 2px rgba(0,0,0,.25))}
+  /* SCORE 라벨 스프라이트(31x10) */
+  .ovScoreLabel{display:block;margin:0 auto 2px;width:78px;height:auto;image-rendering:pixelated}
+  /* 점수 줄: 숫자 + 메달 나란히 */
+  #scoreRow{display:flex;align-items:center;justify-content:center;gap:10px;margin:0 0 12px}
+  #finalScore{font-size:62px;line-height:1.05;font-weight:900;color:#ff7a18;text-shadow:0 3px 0 #b34d00}
+  #overMedal{width:34px;height:auto;object-fit:contain;image-rendering:pixelated;filter:drop-shadow(0 2px 1px rgba(0,0,0,.3))}
+  #overMedal.hidden{display:none}
+  .ovBestLabel{width:55px;height:auto;image-rendering:pixelated;vertical-align:middle}
   #overStats{margin:0 4px 16px}
   .ovRow{display:flex;justify-content:space-between;align-items:center;font-size:16px;font-weight:800;
     padding:8px 12px;border-radius:10px;background:rgba(138,90,43,.10);margin-top:6px}
@@ -140,11 +152,12 @@
 
   <div id="over" class="overlay hidden">
     <div id="overPanel">
-      <div id="newRecord" class="hidden">신기록!</div>
-      <div class="ovScoreLabel">SCORE</div>
-      <div id="finalScore">0</div>
+      <img id="newRecord" class="hidden" src="assets/ui/new_record.png" alt="신기록">
+      <img id="overChar" alt="" onerror="this.style.visibility='hidden'">
+      <img class="ovScoreLabel" src="assets/ui/label_score.png" alt="SCORE" onerror="this.replaceWith(Object.assign(document.createElement('div'),{className:'ovScoreLabel',textContent:'SCORE',style:'font-size:14px;font-weight:800;letter-spacing:3px;color:#b9842f;width:auto'}))">
+      <div id="scoreRow"><span id="finalScore">0</span><img id="overMedal" class="hidden" alt=""></div>
       <div id="overStats">
-        <div class="ovRow"><span class="ovKey">BEST</span><span class="ovVal" id="bestLine">0</span></div>
+        <div class="ovRow"><span class="ovKey"><img class="ovBestLabel" src="assets/ui/label_best.png" alt="BEST" onerror="this.replaceWith(document.createTextNode('BEST'))"></span><span class="ovVal" id="bestLine">0</span></div>
         <div class="ovRow"><span class="ovKey"><img class="coinMini" src="assets/ui/coin_icon.png" alt=""><span id="pickupLabel">COIN</span></span><span class="ovVal" id="coinLine">0</span></div>
       </div>
       <div id="overBtns">
@@ -409,6 +422,21 @@ function gameOver(){
   document.getElementById('best').textContent='BEST '+best;
   document.getElementById('bestLine').textContent=best;
   document.getElementById('coinLine').textContent=(useCanPickup()?'🥫':'🪙')+' +'+coins;
+  // 플레이한 캐릭터 아이콘 (원본 결과 팝업의 캐릭터 썸네일)
+  const ovChar=document.getElementById('overChar');
+  ovChar.style.visibility=''; ovChar.src='assets/char/character_'+selectedChar+'_thumb.png';
+  // 메달: GameLevelData.getMedalType 디스어셈블 임계값(cmp 1999/999/699/499/299/99).
+  // GameData.MEDAL_TYPE: INFINITE=0(>=2000), EMPEROR=1(>=1000), RAINBOW=2(>=700),
+  //   DIAMOND=3(>=500), GOLD=4(>=300), SILVER=5(>=100), BRONZE=6(<100) — 항상 메달이 표시됨.
+  // 보유 스프라이트는 bronze/silver/gold/diamond/rainbow 5종뿐 → INFINITE/EMPEROR는 최상위 rainbow로 대체.
+  const ovMedal=document.getElementById('overMedal');
+  let medal;
+  if(score>=700)      medal='medal_rainbow';    // RAINBOW 이상(EMPEROR/INFINITE 포함)
+  else if(score>=500) medal='medal_diamond';    // DIAMOND
+  else if(score>=300) medal='medal_gold';       // GOLD
+  else if(score>=100) medal='medal_silver';     // SILVER
+  else                medal='medal_bronze';     // BRONZE (<100, 0점 포함 항상 표시)
+  ovMedal.src='assets/ui/'+medal+'.png'; ovMedal.classList.remove('hidden');
   document.getElementById('newRecord').classList.toggle('hidden', !isNew);   // 신기록 스탬프
   document.getElementById('reviveBtn').classList.toggle('hidden', revivedThisRun);  // 부활: 런당 1회
   document.getElementById('over').classList.remove('hidden');
