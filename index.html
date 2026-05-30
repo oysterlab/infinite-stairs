@@ -48,8 +48,9 @@
   #gaugeFx{opacity:0}
   /* on-screen controls — 원본: 하단 양 구석 둥근 나무 아이콘 버튼 (↻ 전환 / ▲ 오르기) */
   #btns{position:absolute;bottom:0;left:0;right:0;display:flex;justify-content:space-between;align-items:flex-end;
-    height:150px;z-index:10;padding:0 22px 26px;padding-bottom:calc(26px + env(safe-area-inset-bottom));pointer-events:none}
-  #btns button{pointer-events:auto;width:90px;height:96px;border:none;background-color:transparent;outline:none;cursor:pointer;
+    z-index:10;padding:0 1.6%;padding-bottom:calc(6px + env(safe-area-inset-bottom));pointer-events:none}
+  /* 원본 검증(level0 Trun_Button/Up_Button): 32x34 스프라이트 ×Transform scale6 = 192x204px = 디자인폭 640의 30% */
+  #btns button{pointer-events:auto;width:30%;aspect-ratio:192/204;height:auto;border:none;background-color:transparent;outline:none;cursor:pointer;
     background-repeat:no-repeat;background-position:center;background-size:contain;image-rendering:pixelated;
     -webkit-tap-highlight-color:transparent;transition:transform .04s,filter .04s;
     filter:drop-shadow(0 4px 2px rgba(0,0,0,.35))}
@@ -72,6 +73,7 @@
     box-shadow:none;border:1px solid rgba(255,255,255,.35)}
   .overlay button.ghost:active{transform:translateY(2px)}
   /* ===== 게임오버 결과 팝업 (원본 UIFailPopup: 중앙 팝업 + 스케일인, 점수/최고/코인 + 부활·다시하기·홈) ===== */
+  /* result_panel.png는 실제 팝업 배경이 아니라 보상 아이템 콜라주 스프라이트(실타래/GEM)라 부적합 → 크림색 CSS 패널 유지 */
   #overPanel{position:relative;width:300px;max-width:84%;padding:30px 22px 20px;border-radius:20px;
     background:linear-gradient(180deg,#fff7e6,#ffe6bd);border:4px solid #8a5a2b;
     box-shadow:0 10px 0 rgba(0,0,0,.28),inset 0 0 0 3px #ffd99a;color:#5a3a1c;text-align:center;transform:scale(.7);opacity:0}
@@ -161,8 +163,8 @@
         <div class="ovRow"><span class="ovKey"><img class="coinMini" src="assets/ui/coin_icon.png" alt=""><span id="pickupLabel">COIN</span></span><span class="ovVal" id="coinLine">0</span></div>
       </div>
       <div id="overBtns">
-        <button id="reviveBtn" class="ovBtn ovRevive"><img src="assets/ui/btn_revive.png" alt="" onerror="this.remove()"><span>부활</span></button>
-        <button id="retryBtn" class="ovBtn ovRetry"><img src="assets/ui/btn_retry.png" alt="" onerror="this.remove()"><span>다시하기</span></button>
+        <button id="reviveBtn" class="ovBtn ovRevive"><span>부활</span></button>
+        <button id="retryBtn" class="ovBtn ovRetry"><span>다시하기</span></button>
         <button id="charBtn" class="ovBtn ovHome"><img src="assets/ui/btn_home.png" alt="" onerror="this.remove()"><span>홈</span></button>
       </div>
     </div>
