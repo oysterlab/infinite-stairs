@@ -145,7 +145,7 @@
       <div id="finalScore">0</div>
       <div id="overStats">
         <div class="ovRow"><span class="ovKey">BEST</span><span class="ovVal" id="bestLine">0</span></div>
-        <div class="ovRow"><span class="ovKey"><img class="coinMini" src="assets/ui/coin_icon.png" alt="">COIN</span><span class="ovVal" id="coinLine">0</span></div>
+        <div class="ovRow"><span class="ovKey"><img class="coinMini" src="assets/ui/coin_icon.png" alt=""><span id="pickupLabel">COIN</span></span><span class="ovVal" id="coinLine">0</span></div>
       </div>
       <div id="overBtns">
         <button id="reviveBtn" class="ovBtn ovRevive"><img src="assets/ui/btn_revive.png" alt="" onerror="this.remove()"><span>부활</span></button>
@@ -259,6 +259,14 @@ if(localStorage.getItem('is_char_default_version')!==DEFAULT_CHAR_VERSION){
 }
 let selectedChar = localStorage.getItem('is_char') || DEFAULT_CHAR;
 if(!CHARS.some(c=>c.id===selectedChar)) selectedChar=DEFAULT_CHAR;
+const CAN_PICKUP_CHARS=new Set(['cat','latte','nila']);
+function useCanPickup(){ return CAN_PICKUP_CHARS.has(selectedChar); }
+function updatePickupHudIcon(){
+  const src=useCanPickup()?'assets/ui/can_icon.png':'assets/ui/coin_icon.png';
+  document.getElementById('coinIcon').src=src;
+  document.querySelectorAll('.coinMini').forEach(im=>{ im.src=src; });
+  document.getElementById('pickupLabel').textContent=useCanPickup()?'CAN':'COIN';
+}
 load('block','assets/stair/staircase_main.png');
 // 도시 배경 25프레임 (bgAtlas, ScrollingMap 무라)
 ['a_1','a_2','a_3','a_4','a_5','a_6','a_7','a_8','b_1','b_2','b_3','b_4',
@@ -266,13 +274,15 @@ load('block','assets/stair/staircase_main.png');
  .forEach(n=>load('bg_'+n,'assets/bg/bg_'+n+'.png'));
 for(let i=1;i<=6;i++) load('coin_'+i,'assets/fx/coin_turn_'+i+'.png');
 for(let i=1;i<=5;i++) load('cget_'+i,'assets/fx/coin_get_'+i+'.png');
+for(let i=1;i<=6;i++) load('can_'+i,'assets/fx/can_turn_'+i+'.png');
+for(let i=1;i<=5;i++) load('canget_'+i,'assets/fx/can_get_'+i+'.png');
 for(let i=1;i<=3;i++) load('puff_'+i,'assets/fx/effect_normal_move_'+i+'.png');
 for(let i=1;i<=3;i++) load('tpuff_'+i,'assets/fx/effect_normal_trun_'+i+'.png');
 for(let i=1;i<=3;i++) load('kick_'+i,'assets/fx/effect_kick'+i+'.png');   // 최고기록 통과 스타버스트
 document.getElementById('gaugeWrap').style.backgroundImage="url('assets/ui/gauge_bg.png')";
 document.getElementById('gaugeFill').style.backgroundImage="url('assets/ui/gauge_bar.png')";
 document.getElementById('gaugeFx').style.backgroundImage  ="url('assets/ui/gauge_effect.png')";
-document.getElementById('coinIcon').src='assets/ui/coin_icon.png';
+updatePickupHudIcon();
 
 // tk2d 클립 정의
 const CLIPS={
@@ -375,7 +385,7 @@ function act(isTurnPress){
   if(landed.coin && !landed.coin.got){
     landed.coin.got=true; coins+=landed.coin.count;
     playSfx(landed.coin.type==='big'?SFX.bigcoin:SFX.coin);
-    spawnFx('cget', landed.gx, landed.gy);
+    spawnFx(useCanPickup()?'canget':'cget', landed.gx, landed.gy);
     const total=bestCoins+coins; document.getElementById('coinCnt').textContent=total;
   }
   // 최고기록 통과 → 킥 스타버스트 1회 (PlayerMove._checkKickBest / StageMgr.kickBestObject)
@@ -398,7 +408,7 @@ function gameOver(){
   if(isNew){ best=score; localStorage.setItem('is_best',best); }
   document.getElementById('best').textContent='BEST '+best;
   document.getElementById('bestLine').textContent=best;
-  document.getElementById('coinLine').textContent='+'+coins;
+  document.getElementById('coinLine').textContent=(useCanPickup()?'🥫':'🪙')+' +'+coins;
   document.getElementById('newRecord').classList.toggle('hidden', !isNew);   // 신기록 스탬프
   document.getElementById('reviveBtn').classList.toggle('hidden', revivedThisRun);  // 부활: 런당 1회
   document.getElementById('over').classList.remove('hidden');
@@ -407,6 +417,7 @@ function gameOver(){
 // ---------- 효과(코인 줍기 팝 / 먼지) ----------
 function spawnFx(kind,gx,gy){
   const def = kind==='cget' ? {n:5,fps:10,key:'cget_'} :        // coin_get 5f@10fps
+              kind==='canget' ? {n:5,fps:10,key:'canget_'} :   // can_get 5f@10fps
               kind==='kick' ? {n:3,fps:10,key:'kick_'} :        // effect_kick 3f@10fps (최고기록 통과)
               kind==='tpuff'? {n:3,fps:14,key:'tpuff_'} : {n:3,fps:14,key:'puff_'};  // 스텝 먼지
   fx.push({gx,gy,t:0,def});
@@ -494,14 +505,14 @@ function render(){
   if(!ready) return;
   const bw=Math.round(STEP_X), blockH=Math.round(STEP_X*BLOCK_AR);    // step 크기 그대로(분리된 블록, 오버랩 X)
   const lo=Math.max(0,player.idx-Math.ceil(H/STEP_Y)-4), hi=player.idx+Math.ceil(H/STEP_Y)+4;
-  // 계단 + 그 위 코인
-  const coinFi=(Math.floor(coinAnimT*12)%6)+1;
+  // 계단 + 그 위 픽업(고양이 캐릭터는 통조림, 나머지는 코인)
+  const coinFi=(Math.floor(coinAnimT*12)%6)+1, pickupKey=useCanPickup()?'can_':'coin_';
   for(let i=Math.min(hi,stairs.length-1); i>=lo; i--){
     const s=stairs[i]; const sx=sx_(s.gx,camGx), sy=sy_(s.gy,camGy);
     if(sy<-blockH||sy>H+blockH) continue;
     ctx.drawImage(IMG.block, sx-bw/2, sy-blockH/2, bw, blockH);
     if(s.coin && !s.coin.got){
-      const ci=IMG['coin_'+coinFi];
+      const ci=IMG[pickupKey+coinFi];
       if(ci&&ci.width){ const ch=Math.round(STEP_X*(s.coin.type==='big'?0.72:0.5)), cw=Math.round(ch*(ci.width/ci.height));
         ctx.drawImage(ci, sx-cw/2, sy-blockH/2-ch-2, cw, ch); }
     }
@@ -510,9 +521,10 @@ function render(){
   for(const e of fx){ const fi=Math.floor(e.t*e.def.fps); const im=IMG[e.def.key+(fi+1)];
     if(!im||!im.width) continue;
     const sx=sx_(e.gx,camGx), sy=sy_(e.gy,camGy);
-    const scale = e.def.key==='cget' ? STEP_X*0.9/40 : e.def.key==='kick' ? STEP_X*1.6/74 : STEP_X*0.7/11;
+    const isGetFx=e.def.key==='cget_'||e.def.key==='canget_', isKickFx=e.def.key==='kick_';
+    const scale = isGetFx ? STEP_X*0.9/40 : isKickFx ? STEP_X*1.6/74 : STEP_X*0.7/11;
     const dw=Math.round(im.width*scale), dh=Math.round(im.height*scale);
-    const yy = e.def.key==='cget' ? sy-blockH : e.def.key==='kick' ? sy-blockH*0.5 : sy-blockH/2;
+    const yy = isGetFx ? sy-blockH : isKickFx ? sy-blockH*0.5 : sy-blockH/2;
     ctx.drawImage(im, Math.round(sx-dw/2), Math.round(yy-dh/2), dw, dh); }
   // 플레이어 (선택 캐릭터) — 균일 160x114 캔버스, D=100px/unit
   const f=window.__curFrame, im=f?IMG['c_'+selectedChar+'_'+f]:null;
@@ -587,6 +599,7 @@ const charSelEl=document.getElementById('charSel');
     const el=document.createElement('div'); el.className='ch'+(c.id===selectedChar?' sel':'');
     el.innerHTML='<img src="assets/char/character_'+c.id+'_thumb.png" alt=""><span>'+c.label+'</span>';
     el.addEventListener('click',()=>{ selectedChar=c.id; localStorage.setItem('is_char',c.id);
+      updatePickupHudIcon();
       [...charSelEl.children].forEach((n,i)=>n.classList.toggle('sel',CHARS[i].id===c.id));
       setClip('idle'); try{playSfx(SFX.button);}catch(e){} });
     charSelEl.appendChild(el);
@@ -607,7 +620,7 @@ window.__g={ act, reset, start(){reset();},
   get stairs(){return stairs}, get player(){return player},
   get score(){return score}, get coins(){return coins}, get gauge(){return gauge},
   get state(){return state}, get guageSpeed(){return guageSpeed},
-  get char(){return selectedChar}, setChar(id){ selectedChar=id; },
+  get char(){return selectedChar}, setChar(id){ selectedChar=id; updatePickupHudIcon(); },
   stepCorrect(){ act(stairs[player.idx].turn===1); },
   setBg(n){ bgScroll=n; bgScrollDisp=n; }, get bgmPaused(){return BGM.paused} };
 </script>
