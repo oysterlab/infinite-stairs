@@ -62,7 +62,10 @@
     color:#fff;text-align:center;background:rgba(8,18,34,.72);backdrop-filter:blur(2px)}
   .overlay.hidden{display:none}
   .overlay h1{font-size:34px;font-weight:900;margin-bottom:8px;text-shadow:0 3px 0 rgba(0,0,0,.35)}
+  #start{justify-content:flex-start;overflow-y:auto;padding:calc(34px + env(safe-area-inset-top)) 12px calc(18px + env(safe-area-inset-bottom))}
+  #start h1{font-size:clamp(30px,8.5vw,40px);line-height:1.12;margin-bottom:14px}
   .overlay p{font-size:15px;opacity:.9;margin-bottom:20px;line-height:1.6}
+  #start p{max-width:min(92vw,390px);font-size:14px;margin-bottom:14px}
   .overlay .big{font-size:72px;font-weight:900;margin:2px 0;text-shadow:0 4px 0 rgba(0,0,0,.35)}
   .overlay .sub{font-size:15px;opacity:.85;margin-bottom:6px}
   .overlay .sub2{font-size:14px;opacity:.8;margin-bottom:22px;color:#ffe27a}
@@ -111,15 +114,16 @@
   .ovRevive{background:linear-gradient(180deg,#5ad07a,#2fa54f)}
   .ovRetry{background:linear-gradient(180deg,#ffd23f,#ff9500)}
   .ovHome{background:linear-gradient(180deg,#9fb4c4,#6d8499)}
-  .csLabel{font-size:13px;font-weight:700;opacity:.85;margin-bottom:8px;letter-spacing:1px}
-  #charSel{display:flex;gap:8px;margin-bottom:20px;flex-wrap:wrap;justify-content:center;max-width:330px}
-  #charSel .ch{width:60px;height:74px;border-radius:12px;background:rgba(255,255,255,.10);
+  .csLabel{font-size:15px;font-weight:800;opacity:.9;margin-bottom:10px;letter-spacing:1px}
+  #charSel{display:flex;gap:10px;margin-bottom:16px;flex-wrap:wrap;justify-content:center;max-width:min(92vw,390px)}
+  #charSel .ch{width:72px;height:90px;border-radius:14px;background:rgba(255,255,255,.10);
     border:2px solid rgba(255,255,255,.18);display:flex;flex-direction:column;align-items:center;justify-content:flex-end;
-    cursor:pointer;padding-bottom:4px;transition:transform .05s}
+    cursor:pointer;padding-bottom:6px;transition:transform .05s}
   #charSel .ch:active{transform:scale(.95)}
   #charSel .ch.sel{border-color:#ffd23f;background:rgba(255,210,63,.22);box-shadow:0 0 10px rgba(255,210,63,.5)}
-  #charSel .ch img{height:46px;image-rendering:pixelated;object-fit:contain;margin-top:auto}
-  #charSel .ch span{font-size:10px;font-weight:700;margin-top:2px;color:#fff;white-space:nowrap}
+  #charSel .ch img{height:58px;image-rendering:pixelated;object-fit:contain;margin-top:auto}
+  #charSel .ch span{font-size:11px;font-weight:800;margin-top:3px;color:#fff;white-space:nowrap}
+  #startBtn{min-width:160px}
 </style>
 </head>
 <body>
